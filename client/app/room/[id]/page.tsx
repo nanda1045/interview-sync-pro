@@ -2,13 +2,18 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Editor from '@monaco-editor/react';
+import dynamic from 'next/dynamic';
 import * as Y from 'yjs';
-import { MonacoBinding } from 'y-monaco';
 import { io, Socket } from 'socket.io-client';
 import { ArrowLeft, Users } from 'lucide-react';
 import { Problem } from '../../../../shared/types';
 import { CustomWebsocketProvider } from '../../../lib/yjs-provider';
+
+// Dynamically import Monaco Editor to prevent SSR issues
+const MonacoEditor = dynamic(
+  () => import('../../../components/MonacoEditor'),
+  { ssr: false }
+);
 
 export default function RoomPage() {
   const params = useParams();
@@ -22,13 +27,21 @@ export default function RoomPage() {
   const yDocRef = useRef<Y.Doc | null>(null);
   const yTextRef = useRef<Y.Text | null>(null);
   const providerRef = useRef<CustomWebsocketProvider | null>(null);
-  const bindingRef = useRef<MonacoBinding | null>(null);
   const socketRef = useRef<Socket | null>(null);
-  const editorRef = useRef<any>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  // Ensure we're on the client side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
-    // Initialize Socket.io connection
-    const socket = io(process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001', {
+    // Only initialize Socket.io and Yjs on the client side
+    if (typeof window === 'undefined') return;
+
+    // Initialize Socket.io connection using environment variable
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
+    const socket = io(socketUrl, {
       transports: ['websocket'],
     });
 
@@ -75,29 +88,11 @@ export default function RoomPage() {
       .catch((err) => console.error('Failed to load problem:', err));
 
     return () => {
-      if (bindingRef.current) {
-        bindingRef.current.destroy();
-      }
       provider.destroy();
       socket.disconnect();
       yDoc.destroy();
     };
-  }, [roomId]);
-
-  const handleEditorDidMount = (editor: any, monaco: any) => {
-    editorRef.current = editor;
-    
-    // Bind Monaco Editor to Yjs when editor is ready
-    if (yTextRef.current && !bindingRef.current) {
-      const binding = new MonacoBinding(
-        yTextRef.current,
-        editor.getModel(),
-        new Set([editor]),
-        providerRef.current?.awareness || undefined
-      );
-      bindingRef.current = binding;
-    }
-  };
+  }, [roomId, isClient]);
 
   return (
     <div className="flex h-screen flex-col bg-slate-50 dark:bg-slate-900">
@@ -214,20 +209,19 @@ export default function RoomPage() {
             </h3>
           </div>
           <div className="flex-1">
-            <Editor
-              height="100%"
-              defaultLanguage="typescript"
-              theme="vs-dark"
-              value={code}
-              onMount={handleEditorDidMount}
-              options={{
-                minimap: { enabled: true },
-                fontSize: 14,
-                wordWrap: 'on',
-                automaticLayout: true,
-                tabSize: 2,
-              }}
-            />
+            {isClient && yDocRef.current && yTextRef.current && providerRef.current ? (
+              <MonacoEditor
+                roomId={roomId}
+                yDoc={yDocRef.current}
+                yText={yTextRef.current}
+                provider={providerRef.current}
+                initialCode={code}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-slate-500 dark:text-slate-400">
+                Loading editor...
+              </div>
+            )}
           </div>
         </div>
       </div>
