@@ -33,6 +33,7 @@ InterviewSync/
 - **Node.js** - JavaScript runtime
 - **TypeScript** - Type-safe server code
 - **Express** - Web framework
+- **MongoDB & Mongoose** - Database and ODM for problem storage
 - **Socket.io** - WebSocket server for real-time events
 - **Yjs** - CRDT synchronization engine
 - **WebSocket (ws)** - Native WebSocket server for Yjs
@@ -42,6 +43,7 @@ InterviewSync/
 ### Prerequisites
 
 - Node.js 18+ and npm
+- MongoDB (local installation or MongoDB Atlas connection string)
 - Git
 
 ### Installation
@@ -62,6 +64,25 @@ InterviewSync/
    cd ../server
    npm install
    ```
+
+4. **Set up MongoDB**:
+   - Install MongoDB locally, or
+   - Use MongoDB Atlas and get a connection string
+   - Update `server/.env` with your MongoDB URI:
+     ```
+     MONGODB_URI=mongodb://localhost:27017/interviewsync
+     ```
+     Or for MongoDB Atlas:
+     ```
+     MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/interviewsync
+     ```
+
+5. **Seed the database** (optional but recommended):
+   ```bash
+   cd server
+   npm run seed
+   ```
+   This will populate the database with 10 high-frequency LeetCode problems.
 
 ### Running the Application
 
@@ -101,13 +122,16 @@ InterviewSync/
 
 ### Creating/Joining a Room
 
-1. On the **Lobby** page (`/`), you can either:
+1. On the **Lobby** page (`/`), you can:
+   - **Browse Problems**: View all available coding problems from the database
+   - **Filter by Company**: Use the sidebar filter to find problems tagged with specific companies (Amazon, Google, Microsoft, etc.)
+   - **Select a Problem**: Click on any problem to start a new room with that problem loaded
    - **Join an existing room**: Enter a room ID and click "Join Room"
    - **Create a new room**: Click "Create New Room" to generate a random room ID
 
 2. Once in a room (`/room/[id]`), you'll see:
-   - **Left Pane**: Problem description with examples and constraints
-   - **Right Pane**: Monaco Editor for collaborative coding
+   - **Left Pane**: Problem description with examples and constraints (loaded from database)
+   - **Right Pane**: Monaco Editor with starter code pre-loaded for collaborative coding
 
 ### Real-time Collaboration
 
@@ -168,10 +192,13 @@ data/
 
 - ✅ **Real-time Code Synchronization** - CRDT-based conflict-free editing
 - ✅ **Room-based Collaboration** - Multiple isolated coding sessions
-- ✅ **LeetCode-style Problems** - Structured problem descriptions
+- ✅ **LeetCode-style Problems** - Structured problem descriptions from MongoDB
+- ✅ **Company Tagging** - Filter problems by company (Amazon, Google, Microsoft, etc.)
+- ✅ **Problem Database** - MongoDB-powered problem storage with 10+ pre-seeded problems
 - ✅ **Monaco Editor** - Full-featured code editor with syntax highlighting
 - ✅ **Responsive Design** - Modern, clean UI with dark mode support
 - ✅ **Type Safety** - Full TypeScript coverage
+- ✅ **RESTful API** - Backend API for problem management and filtering
 
 ## 🔮 Future Enhancements
 

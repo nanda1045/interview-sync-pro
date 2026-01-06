@@ -23,12 +23,23 @@ export default function RoomPage() {
   const [problem, setProblem] = useState<Problem | null>(null);
   const [code, setCode] = useState('// Start coding here...\n');
   const [participants, setParticipants] = useState<string[]>([]);
+  const [problemSlug, setProblemSlug] = useState<string | null>(null);
   
   const yDocRef = useRef<Y.Doc | null>(null);
   const yTextRef = useRef<Y.Text | null>(null);
   const providerRef = useRef<CustomWebsocketProvider | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const [isClient, setIsClient] = useState(false);
+
+  const serverUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
+
+  // Get problem slug from URL on client side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      setProblemSlug(params.get('problem'));
+    }
+  }, []);
 
   // Ensure we're on the client side
   useEffect(() => {
@@ -37,7 +48,7 @@ export default function RoomPage() {
 
   useEffect(() => {
     // Only initialize Socket.io and Yjs on the client side
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !isClient) return;
 
     // Initialize Socket.io connection using environment variable
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
@@ -81,18 +92,46 @@ export default function RoomPage() {
     const initialCode = yText.toString() || '// Start coding here...\n';
     setCode(initialCode);
 
-    // Load problem data
-    fetch('/api/problems/two-sum')
-      .then((res) => res.json())
-      .then((data) => setProblem(data))
-      .catch((err) => console.error('Failed to load problem:', err));
-
     return () => {
       provider.destroy();
       socket.disconnect();
       yDoc.destroy();
     };
   }, [roomId, isClient]);
+
+  // Load problem data from database
+  useEffect(() => {
+    if (!isClient || !problemSlug) return;
+
+    const loadProblem = async () => {
+      try {
+        const response = await fetch(`${serverUrl}/api/problems/${problemSlug}`);
+        if (response.ok) {
+          const data = await response.json();
+          setProblem(data);
+          
+          // Set starter code from problem if Yjs document is empty
+          if (yTextRef.current) {
+            const starterCode = data.starterCode?.typescript || data.starterCode?.javascript || '// Start coding here...\n';
+            const currentCode = yTextRef.current.toString();
+            
+            // Only set starter code if Yjs document is empty or has default code
+            if (!currentCode || currentCode.trim() === '// Start coding here...\n' || currentCode.trim() === '') {
+              yTextRef.current.delete(0, currentCode.length);
+              yTextRef.current.insert(0, starterCode);
+              setCode(starterCode);
+            }
+          }
+        } else {
+          console.error('Failed to load problem:', response.statusText);
+        }
+      } catch (err) {
+        console.error('Failed to load problem:', err);
+      }
+    };
+
+    loadProblem();
+  }, [problemSlug, isClient, serverUrl]);
 
   return (
     <div className="flex h-screen flex-col bg-slate-50 dark:bg-slate-900">
@@ -153,12 +192,12 @@ export default function RoomPage() {
                 </p>
               </div>
 
-              {problem.examples && problem.examples.length > 0 && (
+              {(problem.examples || problem.testCases) && (problem.examples || problem.testCases)!.length > 0 && (
                 <div>
                   <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-white">
                     Examples:
                   </h3>
-                  {problem.examples.map((example, idx) => (
+                  {(problem.examples || problem.testCases)!.map((example, idx) => (
                     <div
                       key={idx}
                       className="mb-4 rounded-lg bg-slate-50 p-4 dark:bg-slate-700"

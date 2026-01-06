@@ -1,15 +1,19 @@
 // Shared types between client and server
 
 export interface Problem {
-  id: string;
+  _id?: string;
+  id?: string;
   title: string;
+  slug: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
   description: string;
-  examples: Example[];
+  testCases?: Example[];
+  examples?: Example[]; // Alias for testCases for backward compatibility
   constraints: string[];
   starterCode: {
     [language: string]: string;
   };
+  companies?: string[];
   hints?: string[];
   solution?: string;
 }

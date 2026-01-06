@@ -6,9 +6,16 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { setupYjsServer } from './yjs-server';
+import { connectDB } from './db/connection';
+import problemRoutes from './routes/problems';
 
 const app = express();
 const httpServer = createServer(app);
+
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 const io = new Server(httpServer, {
   cors: {
     origin: process.env.CLIENT_URL || 'http://localhost:3000',
@@ -18,10 +25,16 @@ const io = new Server(httpServer, {
 
 const PORT = process.env.PORT || 3001;
 
+// Connect to MongoDB
+connectDB();
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// API Routes
+app.use('/api/problems', problemRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
