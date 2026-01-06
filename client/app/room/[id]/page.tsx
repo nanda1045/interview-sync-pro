@@ -60,11 +60,25 @@ export default function RoomPage() {
 
     socket.on('connect', () => {
       console.log('Connected to server');
-      socket.emit('join-room', roomId);
+      // Send room join with problem slug if available
+      socket.emit('join-room', {
+        roomId,
+        problemSlug: problemSlug || undefined,
+      });
     });
 
-    socket.on('room-joined', (room: string) => {
-      console.log('Joined room:', room);
+    socket.on('room-joined', (data: string | { roomId: string; participants: string[] }) => {
+      if (typeof data === 'string') {
+        // Backward compatibility
+        console.log('Joined room:', data);
+      } else {
+        console.log('Joined room:', data.roomId);
+        setParticipants(data.participants);
+      }
+    });
+
+    socket.on('participants-updated', (participantsList: string[]) => {
+      setParticipants(participantsList);
     });
 
     socket.on('user-joined', (userId: string) => {

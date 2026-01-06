@@ -8,6 +8,8 @@ import { Server } from 'socket.io';
 import { setupYjsServer } from './yjs-server';
 import { connectDB } from './db/connection';
 import problemRoutes from './routes/problems';
+import roomRoutes from './routes/rooms';
+import { RoomService } from './services/roomService';
 
 const app = express();
 const httpServer = createServer(app);
@@ -35,30 +37,94 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/problems', problemRoutes);
+app.use('/api/rooms', roomRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
+  
+  // Store room IDs for this socket connection
+  const socketRooms = new Set<string>();
 
-  socket.on('join-room', (roomId: string) => {
+  socket.on('join-room', async (data: string | { roomId: string; problemSlug?: string }) => {
+    let roomId: string;
+    let problemSlug: string | undefined;
+
+    // Handle both string (backward compatibility) and object formats
+    if (typeof data === 'string') {
+      roomId = data;
+    } else {
+      roomId = data.roomId;
+      problemSlug = data.problemSlug;
+    }
+
     socket.join(roomId);
-    console.log(`Client ${socket.id} joined room: ${roomId}`);
+    socketRooms.add(roomId);
     
-    // Notify others in the room
-    socket.to(roomId).emit('user-joined', socket.id);
-    
-    // Send confirmation to the client
-    socket.emit('room-joined', roomId);
+    try {
+      // Persist room and participant
+      const room = await RoomService.addParticipant(roomId, socket.id);
+      
+      if (problemSlug && room) {
+        await RoomService.updateProblemSlug(roomId, problemSlug);
+      }
+
+      // Get all participants in the room
+      const participants = await RoomService.getParticipants(roomId);
+      
+      console.log(`Client ${socket.id} joined room: ${roomId} (${participants.length} participants)`);
+      
+      // Notify others in the room
+      socket.to(roomId).emit('user-joined', socket.id);
+      
+      // Send confirmation to the client with participant list
+      socket.emit('room-joined', {
+        roomId,
+        participants,
+      });
+      
+      // Broadcast updated participant list to all in room
+      io.to(roomId).emit('participants-updated', participants);
+    } catch (error) {
+      console.error(`Error joining room ${roomId}:`, error);
+    }
   });
 
-  socket.on('leave-room', (roomId: string) => {
+  socket.on('leave-room', async (roomId: string) => {
     socket.leave(roomId);
-    console.log(`Client ${socket.id} left room: ${roomId}`);
-    socket.to(roomId).emit('user-left', socket.id);
+    socketRooms.delete(roomId);
+    
+    try {
+      await RoomService.removeParticipant(roomId, socket.id);
+      const participants = await RoomService.getParticipants(roomId);
+      
+      console.log(`Client ${socket.id} left room: ${roomId}`);
+      socket.to(roomId).emit('user-left', socket.id);
+      
+      // Broadcast updated participant list
+      io.to(roomId).emit('participants-updated', participants);
+    } catch (error) {
+      console.error(`Error leaving room ${roomId}:`, error);
+    }
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     console.log(`Client disconnected: ${socket.id}`);
+    
+    // Remove from all rooms
+    try {
+      for (const roomId of socketRooms) {
+        await RoomService.removeParticipant(roomId, socket.id);
+        const participants = await RoomService.getParticipants(roomId);
+        
+        socket.to(roomId).emit('user-left', socket.id);
+        io.to(roomId).emit('participants-updated', participants);
+      }
+    } catch (error) {
+      console.error(`Error handling disconnect for ${socket.id}:`, error);
+    }
+    
+    socketRooms.clear();
   });
 });
 
