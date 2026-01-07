@@ -9,6 +9,7 @@ import { setupYjsServer } from './yjs-server';
 import { connectDB } from './db/connection';
 import problemRoutes from './routes/problems';
 import roomRoutes from './routes/rooms';
+import executeRoutes from './routes/execute';
 import { RoomService } from './services/roomService';
 
 const app = express();
@@ -38,6 +39,7 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/problems', problemRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/execute', executeRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

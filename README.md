@@ -77,6 +77,17 @@ InterviewSync/
      MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/interviewsync
      ```
 
+6. **Set up Judge0 API** (for code execution):
+   - Sign up for a free RapidAPI account at https://rapidapi.com
+   - Subscribe to the Judge0 API (free tier available)
+   - Get your RapidAPI key
+   - Update `server/.env` with your Judge0 credentials:
+     ```
+     JUDGE0_API_URL=https://judge0-ce.p.rapidapi.com
+     JUDGE0_RAPIDAPI_KEY=your-rapidapi-key-here
+     JUDGE0_RAPIDAPI_HOST=judge0-ce.p.rapidapi.com
+     ```
+
 5. **Seed the database** (optional but recommended):
    ```bash
    cd server
@@ -199,6 +210,9 @@ data/
 - ✅ **Responsive Design** - Modern, clean UI with dark mode support
 - ✅ **Type Safety** - Full TypeScript coverage
 - ✅ **RESTful API** - Backend API for problem management and filtering
+- ✅ **Code Execution** - Run code with Judge0 API integration
+- ✅ **Shared Console** - Real-time console output synchronized across participants
+- ✅ **Multi-language Support** - TypeScript, JavaScript, Python, Java, C++, and more
 
 ## 🔮 Future Enhancements
 

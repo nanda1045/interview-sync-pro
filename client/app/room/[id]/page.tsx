@@ -9,9 +9,15 @@ import { ArrowLeft, Users } from 'lucide-react';
 import { Problem } from '../../../../shared/types';
 import { CustomWebsocketProvider } from '../../../lib/yjs-provider';
 
-// Dynamically import Monaco Editor to prevent SSR issues
-const MonacoEditor = dynamic(
-  () => import('../../../components/MonacoEditor'),
+// Dynamically import CodeEditor to prevent SSR issues
+const CodeEditor = dynamic(
+  () => import('../../../components/CodeEditor'),
+  { ssr: false }
+);
+
+// Dynamically import Console
+const Console = dynamic(
+  () => import('../../../components/Console'),
   { ssr: false }
 );
 
@@ -27,9 +33,12 @@ export default function RoomPage() {
   
   const yDocRef = useRef<Y.Doc | null>(null);
   const yTextRef = useRef<Y.Text | null>(null);
+  const yMapRef = useRef<Y.Map<any> | null>(null);
   const providerRef = useRef<CustomWebsocketProvider | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
 
   const serverUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
 
@@ -96,6 +105,10 @@ export default function RoomPage() {
     const yText = yDoc.getText('code');
     yTextRef.current = yText;
 
+    // Initialize shared console output map
+    const yMap = yDoc.getMap('output');
+    yMapRef.current = yMap;
+
     // Connect to Yjs WebSocket server
     const wsUrl = process.env.NEXT_PUBLIC_YJS_URL || 'ws://localhost:3001';
     const provider = new CustomWebsocketProvider(wsUrl, roomId, yDoc);
@@ -146,6 +159,79 @@ export default function RoomPage() {
 
     loadProblem();
   }, [problemSlug, isClient, serverUrl]);
+
+  // Handle code execution
+  const handleRunCode = async (code: string, language: string) => {
+    if (!yMapRef.current) return;
+
+    setIsExecuting(true);
+    setIsConsoleOpen(true);
+
+    try {
+      const response = await fetch(`${serverUrl}/api/execute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          language,
+          source_code: code,
+          stdin: '', // Can be extended to support custom input
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        // Add output to shared Yjs map
+        const outputKey = `output_${Date.now()}`;
+        yMapRef.current.set(outputKey, {
+          ...result,
+          timestamp: Date.now(),
+        });
+      } else {
+        // Add error to shared map
+        const errorKey = `output_${Date.now()}`;
+        yMapRef.current.set(errorKey, {
+          stdout: '',
+          stderr: result.message || 'Execution failed',
+          compile_output: '',
+          message: result.error || 'Unknown error',
+          status: {
+            id: 6, // Runtime Error
+            description: result.error || 'Runtime Error',
+          },
+          time: '0',
+          memory: 0,
+          success: false,
+          timestamp: Date.now(),
+        });
+      }
+    } catch (error: any) {
+      console.error('Error executing code:', error);
+      
+      // Add error to shared map
+      if (yMapRef.current) {
+        const errorKey = `output_${Date.now()}`;
+        yMapRef.current.set(errorKey, {
+          stdout: '',
+          stderr: error.message || 'Failed to execute code',
+          compile_output: '',
+          message: 'Network error or server unavailable',
+          status: {
+            id: 6,
+            description: 'Execution Error',
+          },
+          time: '0',
+          memory: 0,
+          success: false,
+          timestamp: Date.now(),
+        });
+      }
+    } finally {
+      setIsExecuting(false);
+    }
+  };
 
   return (
     <div className="flex h-screen flex-col bg-slate-50 dark:bg-slate-900">
@@ -254,21 +340,19 @@ export default function RoomPage() {
           )}
         </div>
 
-        {/* Right Pane - Monaco Editor */}
-        <div className="w-1/2 flex flex-col">
-          <div className="border-b border-slate-200 bg-slate-50 px-4 py-2 dark:border-slate-700 dark:bg-slate-800">
-            <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Code Editor
-            </h3>
-          </div>
-          <div className="flex-1">
+        {/* Right Pane - Code Editor with Console */}
+        <div className="relative w-1/2 flex flex-col">
+          <div className="flex-1 overflow-hidden">
             {isClient && yDocRef.current && yTextRef.current && providerRef.current ? (
-              <MonacoEditor
+              <CodeEditor
                 roomId={roomId}
                 yDoc={yDocRef.current}
                 yText={yTextRef.current}
                 provider={providerRef.current}
                 initialCode={code}
+                language="typescript"
+                onRunCode={handleRunCode}
+                isExecuting={isExecuting}
               />
             ) : (
               <div className="flex h-full items-center justify-center text-slate-500 dark:text-slate-400">
@@ -276,6 +360,15 @@ export default function RoomPage() {
               </div>
             )}
           </div>
+          
+          {/* Console - slides up from bottom */}
+          {isClient && yMapRef.current && (
+            <Console
+              yMap={yMapRef.current}
+              isOpen={isConsoleOpen}
+              onClose={() => setIsConsoleOpen(false)}
+            />
+          )}
         </div>
       </div>
     </div>
