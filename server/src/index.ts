@@ -41,6 +41,9 @@ app.use('/api/problems', problemRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/execute', executeRoutes);
 
+// Shared timer state for all rooms
+const roomTimers = new Map<string, { timeLeft: number; isPaused: boolean; interval?: NodeJS.Timeout }>();
+
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
@@ -62,6 +65,11 @@ io.on('connection', (socket) => {
 
     socket.join(roomId);
     socketRooms.add(roomId);
+    
+    // Initialize timer for room if it doesn't exist
+    if (!roomTimers.has(roomId)) {
+      roomTimers.set(roomId, { timeLeft: 60 * 60, isPaused: false });
+    }
     
     try {
       // Persist room and participant
@@ -87,6 +95,12 @@ io.on('connection', (socket) => {
       
       // Broadcast updated participant list to all in room
       io.to(roomId).emit('participants-updated', participants);
+
+      // Send current timer state to newly joined client
+      const timer = roomTimers.get(roomId);
+      if (timer) {
+        socket.emit('timer-sync', { timeLeft: timer.timeLeft, isPaused: timer.isPaused });
+      }
     } catch (error) {
       console.error(`Error joining room ${roomId}:`, error);
     }
@@ -108,6 +122,53 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error(`Error leaving room ${roomId}:`, error);
     }
+  });
+
+  // Timer synchronization
+  socket.on('timer-request', ({ roomId }: { roomId: string }) => {
+    const timer = roomTimers.get(roomId);
+    if (timer) {
+      socket.emit('timer-sync', { timeLeft: timer.timeLeft, isPaused: timer.isPaused });
+    }
+  });
+
+  socket.on('timer-start', ({ roomId }: { roomId: string }) => {
+    const timer = roomTimers.get(roomId);
+    if (timer) {
+      timer.isPaused = false;
+      io.to(roomId).emit('timer-start');
+    }
+  });
+
+  socket.on('timer-pause', ({ roomId }: { roomId: string }) => {
+    const timer = roomTimers.get(roomId);
+    if (timer) {
+      timer.isPaused = true;
+      io.to(roomId).emit('timer-pause');
+    }
+  });
+
+  socket.on('timer-reset', ({ roomId, duration }: { roomId: string; duration: number }) => {
+    roomTimers.set(roomId, { timeLeft: duration * 60, isPaused: false });
+    io.to(roomId).emit('timer-reset', duration);
+  });
+
+  // WebRTC signaling handlers
+  socket.on('webrtc-ready', ({ roomId }: { roomId: string }) => {
+    // Notify other users in the room that a new peer is ready
+    socket.to(roomId).emit('user-joined', socket.id);
+  });
+
+  socket.on('webrtc-offer', ({ roomId, to, signal }: { roomId: string; to: string; signal: any }) => {
+    socket.to(to).emit('webrtc-offer', { from: socket.id, signal });
+  });
+
+  socket.on('webrtc-answer', ({ roomId, to, signal }: { roomId: string; to: string; signal: any }) => {
+    socket.to(to).emit('webrtc-answer', { from: socket.id, signal });
+  });
+
+  socket.on('webrtc-ice-candidate', ({ roomId, to, candidate }: { roomId: string; to: string; candidate: any }) => {
+    socket.to(to).emit('webrtc-ice-candidate', { from: socket.id, candidate });
   });
 
   socket.on('disconnect', async () => {

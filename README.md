@@ -1,55 +1,97 @@
 # InterviewSync Pro
 
-A LeetCode-style collaborative mock interview platform that enables real-time code collaboration between interviewers and candidates.
+A professional LeetCode-style collaborative mock interview platform that enables real-time code collaboration, video/audio communication, and comprehensive interview management between interviewers and candidates.
 
 ## 🎯 Overview
 
-InterviewSync Pro is a full-stack monorepo application that provides a seamless collaborative coding experience. Built with modern web technologies, it features real-time synchronization using CRDT (Conflict-free Replicated Data Types) for conflict-free collaborative editing.
+InterviewSync Pro is a full-stack monorepo application that provides a seamless collaborative coding experience. Built with modern web technologies, it features:
 
-## 🏗️ Architecture
+- **Real-time Code Synchronization** using CRDT (Conflict-free Replicated Data Types) for conflict-free collaborative editing
+- **WebRTC Video/Audio** for P2P communication between participants
+- **Interviewer Dashboard** with exclusive access to solutions and hints
+- **Synchronized Interview Timer** across all participants
+- **Professional UI** with dark/light theme support
+- **Code Execution** via Judge0 API integration
 
-The project follows a monorepo structure with separate client and server applications:
+## 🏗️ System Architecture
 
 ```
-InterviewSync/
-├── client/          # Next.js 14+ frontend application
-├── server/          # Node.js/Express backend with Socket.io
-├── shared/          # Shared TypeScript types
-└── data/            # Problem data and persistence
+┌─────────────────────────────────────────────────────────────────┐
+│                         Client (Next.js)                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐   │
+│  │   Lobby      │  │  Room Page   │  │   VideoChat        │   │
+│  │              │  │              │  │   (WebRTC)         │   │
+│  └──────────────┘  └──────────────┘  └────────────────────┘   │
+│         │                  │                     │              │
+│         │                  │                     │              │
+│         └──────────────────┼─────────────────────┘              │
+│                            │                                    │
+│         ┌──────────────────┴──────────────────┐                │
+│         │     Socket.io Client                 │                │
+│         │  (Room Management, Timer, Signaling) │                │
+│         └──────────────────┬──────────────────┘                │
+│                            │                                    │
+│         ┌──────────────────┴──────────────────┐                │
+│         │     Yjs Provider                     │                │
+│         │  (CRDT Sync via WebSocket)           │                │
+│         └──────────────────┬──────────────────┘                │
+└────────────────────────────┼────────────────────────────────────┘
+                             │
+                ┌────────────┴────────────┐
+                │                         │
+    ┌───────────▼──────────┐   ┌─────────▼──────────┐
+    │   Express Server     │   │   Yjs WebSocket    │
+    │   (Socket.io)        │   │   Server           │
+    │                      │   │                    │
+    │  - Room Management   │   │  - CRDT Sync       │
+    │  - Timer Sync        │   │  - Document Persist│
+    │  - WebRTC Signaling  │   └────────────────────┘
+    │  - Code Execution    │
+    └───────────┬──────────┘
+                │
+    ┌───────────▼──────────┐
+    │     MongoDB          │
+    │  - Problems DB       │
+    │  - Room State        │
+    └──────────────────────┘
 ```
 
 ## 🛠️ Technology Stack
 
 ### Frontend (`/client`)
-- **Next.js 14+** - React framework with App Router
+- **Next.js 16+** - React framework with App Router
 - **TypeScript** - Type-safe development
-- **Tailwind CSS** - Utility-first CSS framework
-- **Monaco Editor** - VS Code's editor component
+- **Tailwind CSS 4** - Utility-first CSS framework with dark mode
+- **Monaco Editor** - VS Code's editor component with collaborative editing
 - **Lucide React** - Modern icon library
 - **Yjs** - CRDT-based real-time synchronization
-- **Socket.io Client** - Real-time communication
+- **Socket.io Client** - Real-time communication for rooms and signaling
+- **Simple-Peer** - WebRTC P2P video/audio connections
 
 ### Backend (`/server`)
 - **Node.js** - JavaScript runtime
 - **TypeScript** - Type-safe server code
 - **Express** - Web framework
 - **MongoDB & Mongoose** - Database and ODM for problem storage
-- **Socket.io** - WebSocket server for real-time events
+- **Socket.io** - WebSocket server for real-time events, timer sync, and WebRTC signaling
 - **Yjs** - CRDT synchronization engine
 - **WebSocket (ws)** - Native WebSocket server for Yjs
+- **Judge0 API** - Code execution and testing service
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ and npm
-- MongoDB (local installation or MongoDB Atlas connection string)
-- Git
+- **Node.js 18+** and npm
+- **MongoDB** (local installation or MongoDB Atlas connection string)
+- **Git**
+- **RapidAPI Account** (for Judge0 API access)
 
 ### Installation
 
-1. **Clone the repository** (if applicable) or navigate to the project directory:
+1. **Clone the repository**:
    ```bash
+   git clone <repository-url>
    cd InterviewSync
    ```
 
@@ -65,35 +107,43 @@ InterviewSync/
    npm install
    ```
 
-4. **Set up MongoDB**:
-   - Install MongoDB locally, or
-   - Use MongoDB Atlas and get a connection string
-   - Update `server/.env` with your MongoDB URI:
-     ```
-     MONGODB_URI=mongodb://localhost:27017/interviewsync
-     ```
-     Or for MongoDB Atlas:
-     ```
-     MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/interviewsync
-     ```
+4. **Set up environment variables**:
 
-6. **Set up Judge0 API** (for code execution):
-   - Sign up for a free RapidAPI account at https://rapidapi.com
-   - Subscribe to the Judge0 API (free tier available)
-   - Get your RapidAPI key
-   - Update `server/.env` with your Judge0 credentials:
-     ```
-     JUDGE0_API_URL=https://judge0-ce.p.rapidapi.com
-     JUDGE0_RAPIDAPI_KEY=your-rapidapi-key-here
-     JUDGE0_RAPIDAPI_HOST=judge0-ce.p.rapidapi.com
-     ```
+   **Client (`.env.local` in `/client` directory)**:
+   ```env
+   NEXT_PUBLIC_SERVER_URL=http://localhost:3001
+   NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
+   NEXT_PUBLIC_YJS_URL=ws://localhost:3001
+   ```
 
-5. **Seed the database** (optional but recommended):
+   **Server (`.env` in `/server` directory)**:
+   ```env
+   # Server Configuration
+   PORT=3001
+   CLIENT_URL=http://localhost:3000
+
+   # MongoDB Configuration
+   MONGODB_URI=mongodb://localhost:27017/interviewsync
+   # Or for MongoDB Atlas:
+   # MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/interviewsync
+
+   # Judge0 API Configuration (via RapidAPI)
+   JUDGE0_API_URL=https://judge0-ce.p.rapidapi.com
+   JUDGE0_RAPIDAPI_KEY=your-rapidapi-key-here
+   JUDGE0_RAPIDAPI_HOST=judge0-ce.p.rapidapi.com
+   ```
+
+5. **Set up Judge0 API**:
+   - Sign up for a free RapidAPI account at [https://rapidapi.com](https://rapidapi.com)
+   - Subscribe to the [Judge0 API](https://rapidapi.com/judge0-official/api/judge0-ce) (free tier available)
+   - Copy your RapidAPI key and update `server/.env`
+
+6. **Seed the database** (optional but recommended):
    ```bash
    cd server
    npm run seed
    ```
-   This will populate the database with 10 high-frequency LeetCode problems.
+   This will populate the database with high-frequency LeetCode problems.
 
 ### Running the Application
 
@@ -115,14 +165,14 @@ InterviewSync/
 
 #### Production Mode
 
-1. **Build the server**:
+1. **Build and start the server**:
    ```bash
    cd server
    npm run build
    npm start
    ```
 
-2. **Build the client**:
+2. **Build and start the client**:
    ```bash
    cd client
    npm run build
@@ -141,106 +191,177 @@ InterviewSync/
    - **Create a new room**: Click "Create New Room" to generate a random room ID
 
 2. Once in a room (`/room/[id]`), you'll see:
-   - **Left Pane**: Problem description with examples and constraints (loaded from database)
+   - **Left Pane**: Problem description with tabs for Problem, Hints (interviewer only), and Solution (interviewer only)
    - **Right Pane**: Monaco Editor with starter code pre-loaded for collaborative coding
+   - **Header**: Room info, timer, interviewer toggle, participant count, and theme toggle
+   - **Video Chat**: Floating window with video feeds and audio/video controls
 
-### Real-time Collaboration
+### Features
 
+#### Real-time Collaboration
 - Code changes are automatically synchronized across all participants in the same room
 - Multiple users can edit simultaneously without conflicts (thanks to CRDT)
 - Socket.io handles room management and user presence
 
-## 🔧 Configuration
+#### WebRTC Video/Audio
+- **P2P Communication**: Direct peer-to-peer video and audio connections
+- **Floating Video Window**: Draggable video chat interface
+- **Controls**: Mute/unmute microphone and enable/disable camera
+- **Multi-participant Support**: See all participants in the room
 
-### Environment Variables
+#### Interviewer Dashboard
+- **Role Toggle**: Switch between Interviewer and Candidate modes
+- **Solution Tab**: View the official solution (interviewer only)
+- **Hints Tab**: Access problem hints to guide candidates (interviewer only)
+- **Candidate View**: Candidates see only the problem description
 
-#### Client (`.env.local` in `/client`)
-```env
-NEXT_PUBLIC_SERVER_URL=http://localhost:3001
-NEXT_PUBLIC_YJS_URL=ws://localhost:3001
-```
+#### Interview Timer
+- **Synchronized Countdown**: All participants see the same timer
+- **Color-coded**: Green (15+ min), Yellow (5-15 min), Red (<5 min)
+- **Visual Indicator**: Shows "Time's Up!" when timer reaches zero
 
-#### Server (`.env` in `/server`)
-```env
-PORT=3001
-CLIENT_URL=http://localhost:3000
-```
+#### UI/UX
+- **Dark/Light Mode**: Toggle theme with persistent preferences
+- **Responsive Design**: Works on desktop and tablet devices
+- **Professional Polish**: Modern, clean interface with smooth animations
 
-## 📁 Project Structure
+## 🎨 Complete Feature List
 
-### Client Structure
-```
-client/
-├── app/
-│   ├── api/              # API routes
-│   ├── room/[id]/       # Dynamic room page
-│   ├── layout.tsx       # Root layout
-│   └── page.tsx         # Lobby page
-├── public/              # Static assets
-└── package.json
-```
-
-### Server Structure
-```
-server/
-├── src/
-│   ├── index.ts         # Express & Socket.io server
-│   ├── yjs-server.ts    # Yjs WebSocket server
-│   └── persistence.ts   # Document persistence
-├── data/
-│   └── persistence/     # Persisted Yjs documents
-└── package.json
-```
-
-### Data Structure
-```
-data/
-└── problems/
-    └── two-sum.json     # Sample problem data
-```
-
-## 🎨 Features
-
+### Core Features
 - ✅ **Real-time Code Synchronization** - CRDT-based conflict-free editing
 - ✅ **Room-based Collaboration** - Multiple isolated coding sessions
 - ✅ **LeetCode-style Problems** - Structured problem descriptions from MongoDB
 - ✅ **Company Tagging** - Filter problems by company (Amazon, Google, Microsoft, etc.)
-- ✅ **Problem Database** - MongoDB-powered problem storage with 10+ pre-seeded problems
+- ✅ **Problem Database** - MongoDB-powered problem storage with pre-seeded problems
+
+### Editor Features
 - ✅ **Monaco Editor** - Full-featured code editor with syntax highlighting
-- ✅ **Responsive Design** - Modern, clean UI with dark mode support
-- ✅ **Type Safety** - Full TypeScript coverage
-- ✅ **RESTful API** - Backend API for problem management and filtering
+- ✅ **Multi-language Support** - TypeScript, JavaScript, Python, Java, C++, C
+- ✅ **Language Switching** - Change programming language on the fly
 - ✅ **Code Execution** - Run code with Judge0 API integration
 - ✅ **Shared Console** - Real-time console output synchronized across participants
-- ✅ **Multi-language Support** - TypeScript, JavaScript, Python, Java, C++, and more
 
-## 🔮 Future Enhancements
+### Communication Features
+- ✅ **WebRTC Video Chat** - P2P video and audio communication
+- ✅ **Mute/Unmute Controls** - Toggle microphone and camera
+- ✅ **Floating Video Window** - Draggable, resizable video interface
+- ✅ **Multi-participant Video** - See all participants' video feeds
 
-- [ ] Code execution and testing
-- [ ] Multiple language support
-- [ ] Video/audio chat integration
-- [ ] Code history and replay
-- [ ] Problem library expansion
-- [ ] User authentication
-- [ ] Session recording
-- [ ] Performance metrics
+### Interview Features
+- ✅ **Interviewer Mode** - Special dashboard for interviewers
+- ✅ **Solution View** - Access official solutions (interviewer only)
+- ✅ **Hints System** - Guide candidates with hints (interviewer only)
+- ✅ **Synchronized Timer** - Countdown timer synced across all participants
+- ✅ **Role-based Access** - Candidates cannot see solutions or hints
+
+### UI/UX Features
+- ✅ **Dark Mode** - Full dark theme support
+- ✅ **Light Mode** - Clean light theme
+- ✅ **Theme Toggle** - Switch themes with persistent preferences
+- ✅ **Responsive Design** - Works across different screen sizes
+- ✅ **Type Safety** - Full TypeScript coverage
+- ✅ **Modern UI** - Tailwind CSS with professional polish
+
+### Technical Features
+- ✅ **RESTful API** - Backend API for problem management and filtering
+- ✅ **WebSocket Communication** - Real-time updates via Socket.io
+- ✅ **Document Persistence** - Yjs documents persisted to disk
+- ✅ **Error Handling** - Comprehensive error handling and user feedback
+
+## 📁 Project Structure
+
+```
+InterviewSync/
+├── client/                    # Next.js frontend
+│   ├── app/
+│   │   ├── api/              # API routes
+│   │   ├── room/[id]/        # Dynamic room page
+│   │   ├── layout.tsx        # Root layout
+│   │   ├── page.tsx          # Lobby page
+│   │   └── globals.css       # Global styles
+│   ├── components/
+│   │   ├── CodeEditor.tsx    # Monaco editor with Yjs binding
+│   │   ├── Console.tsx       # Code execution console
+│   │   ├── VideoChat.tsx     # WebRTC video component
+│   │   ├── ThemeToggle.tsx   # Dark/light mode toggle
+│   │   └── InterviewTimer.tsx # Timer component
+│   ├── lib/
+│   │   └── yjs-provider.ts   # Custom Yjs WebSocket provider
+│   └── package.json
+│
+├── server/                    # Express backend
+│   ├── src/
+│   │   ├── index.ts          # Express & Socket.io server
+│   │   ├── yjs-server.ts     # Yjs WebSocket server
+│   │   ├── persistence.ts    # Document persistence
+│   │   ├── db/
+│   │   │   └── connection.ts # MongoDB connection
+│   │   ├── models/
+│   │   │   ├── Problem.ts    # Problem model
+│   │   │   └── Room.ts       # Room model
+│   │   ├── routes/
+│   │   │   ├── problems.ts   # Problem API routes
+│   │   │   ├── rooms.ts      # Room API routes
+│   │   │   └── execute.ts    # Code execution routes
+│   │   ├── services/
+│   │   │   └── roomService.ts # Room business logic
+│   │   └── utils/
+│   │       └── judge0Languages.ts # Language mappings
+│   ├── data/
+│   │   └── persistence/      # Persisted Yjs documents
+│   └── package.json
+│
+├── shared/                    # Shared TypeScript types
+│   └── types.ts
+│
+├── data/                      # Problem data
+│   └── problems/
+│       └── two-sum.json      # Sample problem
+│
+├── LICENSE                    # MIT License
+├── CONTRIBUTING.md            # Contribution guidelines
+└── README.md                  # This file
+```
+
+## 🔧 Configuration
+
+### Environment Variables Reference
+
+#### Client (`.env.local`)
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_SERVER_URL` | Backend API URL | `http://localhost:3001` |
+| `NEXT_PUBLIC_SOCKET_URL` | Socket.io server URL | `http://localhost:3001` |
+| `NEXT_PUBLIC_YJS_URL` | Yjs WebSocket URL | `ws://localhost:3001` |
+
+#### Server (`.env`)
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `PORT` | Server port | No (default: 3001) |
+| `CLIENT_URL` | Frontend URL for CORS | No (default: http://localhost:3000) |
+| `MONGODB_URI` | MongoDB connection string | Yes |
+| `JUDGE0_API_URL` | Judge0 API endpoint | Yes |
+| `JUDGE0_RAPIDAPI_KEY` | RapidAPI key for Judge0 | Yes |
+| `JUDGE0_RAPIDAPI_HOST` | RapidAPI host header | Yes |
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project.
 
 ## 📝 License
 
-This project is open source and available under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- [Yjs](https://github.com/yjs/yjs) - CRDT implementation
-- [Monaco Editor](https://microsoft.github.io/monaco-editor/) - Code editor
+- [Yjs](https://github.com/yjs/yjs) - CRDT implementation for real-time collaboration
+- [Monaco Editor](https://microsoft.github.io/monaco-editor/) - VS Code's editor component
 - [Next.js](https://nextjs.org/) - React framework
 - [Socket.io](https://socket.io/) - Real-time communication
+- [Simple-Peer](https://github.com/feross/simple-peer) - WebRTC made simple
+- [Judge0](https://judge0.com/) - Code execution API
+- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
 
 ---
 
 Built with ❤️ for collaborative coding interviews
-
