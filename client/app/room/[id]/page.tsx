@@ -10,6 +10,7 @@ import { Problem } from '../../../../shared/types';
 import { CustomWebsocketProvider } from '../../../lib/yjs-provider';
 import ThemeToggle from '../../../components/ThemeToggle';
 import InterviewTimer from '../../../components/InterviewTimer';
+import { getJudge0LanguageId } from '../../../lib/judge0Languages';
 
 // Dynamically import CodeEditor to prevent SSR issues
 // Must be outside component to avoid hydration errors
@@ -194,13 +195,16 @@ export default function RoomPage() {
     setIsConsoleOpen(true);
 
     try {
+      // Convert language name to Judge0 language_id
+      const language_id = getJudge0LanguageId(language);
+
       const response = await fetch(`${serverUrl}/api/execute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          language,
+          language_id, // Use Judge0 language_id
           source_code: code,
           stdin: '', // Can be extended to support custom input
         }),

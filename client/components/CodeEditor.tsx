@@ -6,6 +6,7 @@ import * as Y from 'yjs';
 import { MonacoBinding } from 'y-monaco';
 import { CustomWebsocketProvider } from '../lib/yjs-provider';
 import { Play, Loader2 } from 'lucide-react';
+import { JUDGE0_LANGUAGE_MAP, getLanguageDisplayName } from '../lib/judge0Languages';
 
 // Dynamically import Monaco Editor to prevent SSR/hydration issues
 const Editor = dynamic(
@@ -105,14 +106,15 @@ export default function CodeEditor({
           <select
             value={currentLanguage}
             onChange={(e) => setCurrentLanguage(e.target.value)}
-            className="rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300"
+            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300"
           >
-            <option value="typescript">TypeScript</option>
-            <option value="javascript">JavaScript</option>
-            <option value="python3">Python</option>
-            <option value="java">Java</option>
-            <option value="cpp">C++</option>
-            <option value="c">C</option>
+            {Object.keys(JUDGE0_LANGUAGE_MAP)
+              .filter((lang) => ['python3', 'javascript', 'typescript', 'java', 'cpp', 'c', 'csharp', 'go', 'rust'].includes(lang))
+              .map((lang) => (
+                <option key={lang} value={lang}>
+                  {getLanguageDisplayName(lang)}
+                </option>
+              ))}
           </select>
         </div>
         <button

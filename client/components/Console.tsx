@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { X, CheckCircle, XCircle, AlertCircle, Clock } from 'lucide-react';
+import { X, CheckCircle, XCircle, AlertCircle, Clock, Zap } from 'lucide-react';
 import * as Y from 'yjs';
 
 interface ConsoleOutput {
@@ -58,12 +58,15 @@ export default function Console({ yMap, isOpen, onClose }: ConsoleProps) {
 
   // Auto-scroll to bottom when new output arrives
   useEffect(() => {
-    if (consoleEndRef.current) {
+    if (consoleEndRef.current && isOpen) {
       consoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [outputs]);
+  }, [outputs, isOpen]);
 
-  if (!isOpen) return null;
+  // Always show console when there are outputs, otherwise only when explicitly opened
+  const shouldShow = isOpen || outputs.length > 0;
+  
+  if (!shouldShow) return null;
 
   const getStatusIcon = (output: ConsoleOutput) => {
     if (output.success) {
@@ -87,22 +90,23 @@ export default function Console({ yMap, isOpen, onClose }: ConsoleProps) {
   };
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-10 flex h-64 flex-col border-t border-slate-300 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
+    <div className="absolute bottom-0 left-0 right-0 z-10 flex h-64 flex-col border-t-2 border-slate-300 bg-white shadow-lg dark:border-slate-600 dark:bg-slate-800">
       {/* Console Header */}
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2 dark:border-slate-700 dark:bg-slate-700">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-            Console
+            Console Output
           </h3>
           {outputs.length > 0 && (
-            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-600 dark:text-slate-300">
-              {outputs.length}
+            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+              {outputs.length} {outputs.length === 1 ? 'execution' : 'executions'}
             </span>
           )}
         </div>
         <button
           onClick={onClose}
           className="rounded p-1 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-600 dark:hover:text-slate-200"
+          title="Hide console"
         >
           <X className="h-4 w-4" />
         </button>
@@ -126,12 +130,20 @@ export default function Console({ yMap, isOpen, onClose }: ConsoleProps) {
                   <span className="text-sm font-semibold text-slate-900 dark:text-white">
                     {output.status.description}
                   </span>
-                  {output.time && (
-                    <div className="ml-auto flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
-                      <Clock className="h-3 w-3" />
-                      {output.time}s
-                    </div>
-                  )}
+                </div>
+
+                {/* Execution Stats */}
+                <div className="mb-3 flex items-center gap-4 rounded-md bg-slate-100 px-3 py-2 dark:bg-slate-700/50">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span className="font-medium">Time:</span>
+                    <span>{output.time ? parseFloat(output.time).toFixed(3) : '0.000'}s</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300">
+                    <Zap className="h-3.5 w-3.5" />
+                    <span className="font-medium">Memory:</span>
+                    <span>{output.memory ? (output.memory / 1024).toFixed(2) : '0.00'} KB</span>
+                  </div>
                 </div>
 
                 {output.stdout && (
