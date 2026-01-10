@@ -35,9 +35,9 @@ const Console = dynamic(
   }
 );
 
-// Dynamically import VideoChat
-const VideoChat = dynamic(
-  () => import('../../../components/VideoChat'),
+// Dynamically import VideoCall
+const VideoCall = dynamic(
+  () => import('../../../components/VideoCall'),
   { 
     ssr: false,
     loading: () => null,
@@ -513,9 +513,9 @@ export default function RoomPage() {
         </div>
       </div>
 
-      {/* Video Chat - Floating Window */}
+      {/* Video Call - Draggable Overlay */}
       {isClient && socketRef.current && userId && (
-        <VideoChat
+        <VideoCall
           socket={socketRef.current}
           roomId={roomId}
           userId={userId}

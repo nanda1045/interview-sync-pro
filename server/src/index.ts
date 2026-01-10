@@ -155,19 +155,23 @@ io.on('connection', (socket) => {
 
   // WebRTC signaling handlers
   socket.on('webrtc-ready', ({ roomId }: { roomId: string }) => {
-    // Notify other users in the room that a new peer is ready
+    console.log(`WebRTC ready for user ${socket.id} in room ${roomId}`);
+    // Notify other users in the room that a new peer is ready for WebRTC
     socket.to(roomId).emit('user-joined', socket.id);
   });
 
   socket.on('webrtc-offer', ({ roomId, to, signal }: { roomId: string; to: string; signal: any }) => {
+    console.log(`WebRTC offer from ${socket.id} to ${to} in room ${roomId}`);
     socket.to(to).emit('webrtc-offer', { from: socket.id, signal });
   });
 
   socket.on('webrtc-answer', ({ roomId, to, signal }: { roomId: string; to: string; signal: any }) => {
+    console.log(`WebRTC answer from ${socket.id} to ${to} in room ${roomId}`);
     socket.to(to).emit('webrtc-answer', { from: socket.id, signal });
   });
 
   socket.on('webrtc-ice-candidate', ({ roomId, to, candidate }: { roomId: string; to: string; candidate: any }) => {
+    // Relay ICE candidates for NAT traversal
     socket.to(to).emit('webrtc-ice-candidate', { from: socket.id, candidate });
   });
 
