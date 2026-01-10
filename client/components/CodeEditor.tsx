@@ -45,6 +45,12 @@ export default function CodeEditor({
   const editorRef = useRef<any>(null);
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState(language);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Ensure component only renders on client side
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
     editorRef.current = editor;
@@ -82,8 +88,17 @@ export default function CodeEditor({
     }
   };
 
+  // Prevent hydration errors by only rendering when mounted on client
+  if (!isMounted) {
+    return (
+      <div className="flex h-full items-center justify-center text-slate-500 dark:text-slate-400">
+        Loading editor...
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" suppressHydrationWarning>
       {/* Editor Header with Run Button */}
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2 dark:border-slate-700 dark:bg-slate-800">
         <div className="flex items-center gap-3">
@@ -120,7 +135,7 @@ export default function CodeEditor({
       </div>
 
       {/* Editor */}
-      <div className="relative flex-1">
+      <div className="relative flex-1" suppressHydrationWarning>
         {!isEditorReady && (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-slate-400">
             Loading editor...

@@ -10,7 +10,7 @@ export class RoomService {
     if (!room) {
       room = await Room.create({
         roomId,
-        problemSlug: problemSlug || null,
+        ...(problemSlug && { problemSlug }),
         participants: [],
       });
     } else if (problemSlug && !room.problemSlug) {

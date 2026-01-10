@@ -12,21 +12,35 @@ import ThemeToggle from '../../../components/ThemeToggle';
 import InterviewTimer from '../../../components/InterviewTimer';
 
 // Dynamically import CodeEditor to prevent SSR issues
+// Must be outside component to avoid hydration errors
 const CodeEditor = dynamic(
   () => import('../../../components/CodeEditor'),
-  { ssr: false }
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full items-center justify-center text-slate-500 dark:text-slate-400">
+        Loading editor...
+      </div>
+    ),
+  }
 );
 
 // Dynamically import Console
 const Console = dynamic(
   () => import('../../../components/Console'),
-  { ssr: false }
+  { 
+    ssr: false,
+    loading: () => null,
+  }
 );
 
 // Dynamically import VideoChat
 const VideoChat = dynamic(
   () => import('../../../components/VideoChat'),
-  { ssr: false }
+  { 
+    ssr: false,
+    loading: () => null,
+  }
 );
 
 export default function RoomPage() {
@@ -466,7 +480,7 @@ export default function RoomPage() {
         {/* Right Pane - Code Editor with Console */}
         <div className="relative w-1/2 flex flex-col">
           <div className="flex-1 overflow-hidden">
-            {isClient && yDocRef.current && yTextRef.current && providerRef.current ? (
+            {typeof window !== 'undefined' && isClient && yDocRef.current && yTextRef.current && providerRef.current ? (
               <CodeEditor
                 roomId={roomId}
                 yDoc={yDocRef.current}

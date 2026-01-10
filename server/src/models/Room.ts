@@ -21,7 +21,7 @@ const RoomSchema = new Schema<IRoom>(
     },
     problemSlug: {
       type: String,
-      default: null,
+      required: false,
     },
     participants: [
       {
